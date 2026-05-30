@@ -1,0 +1,367 @@
+<!--  Author:           Maurice Gonzalez  -->
+<!--  Creation Date:    May 26, 2026      -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator App Testing</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box; margin: 0; padding: 0;
+        }
+ 
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+ 
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: #f8fafc;
+        }
+ 
+        .subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 2rem;
+        }
+ 
+        .summary {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+ 
+        .summary-card {
+            background: #1e2330;
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            min-width: 120px;
+            text-align: center;
+            border: 1px solid #2d3448;
+        }
+ 
+        .summary-card .count {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+ 
+        .summary-card .label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+ 
+        .summary-card.total .count  { color: #94a3b8; }
+        .summary-card.passed .count { color: #4ade80; }
+        .summary-card.failed .count { color: #f87171; }
+ 
+        .progress-bar {
+            height: 6px;
+            background: #1e2330;
+            border-radius: 999px;
+            margin-bottom: 2rem;
+            overflow: hidden;
+        }
+ 
+        .progress-fill {
+            height: 100%;
+            background: #4ade80;
+            border-radius: 999px;
+            transition: width 0.4s ease;
+        }
+ 
+        .group {
+            margin-bottom: 1.5rem;
+        }
+ 
+        .group-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            padding-left: 0.25rem;
+        }
+ 
+        .test {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.65rem 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.3rem;
+            background: #1e2330;
+            border: 1px solid #2d3448;
+            font-size: 0.875rem;
+        }
+ 
+        .test.pass { border-left: 3px solid #4ade80; }
+        .test.fail { border-left: 3px solid #f87171; background: #2a1f24; }
+        .test-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+        .test-name { flex: 1; color: #cbd5e1; }
+        .test-detail { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+        .test-detail.error { color: #fca5a5; }
+
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 999px;
+            flex-shrink: 0;
+        }
+ 
+        .badge.pass { background: #14532d; color: #4ade80; }
+        .badge.fail { background: #4c1d1d; color: #f87171; }
+ 
+        code {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            background: #0f1117;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            color: #93c5fd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calcultor Test Suite</h1>
+    <p class="subtitle">Automated Edge-Case Testing</p>
+
+    <div class="summary">
+        <div class="summary-card total">
+            <div class="count" id="count-total">—</div>
+            <div class="label">Total</div>
+        </div>
+
+        <div class="summary-card passed">
+            <div class="count" id="count-passed">—</div>
+            <div class="label">Passed</div>
+        </div>
+
+        <div class="summary-card failed">
+            <div class="count" id="count-failed">—</div>
+            <div class="label">Failed</div>
+        </div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <div id="results"></div>
+    <script src="script.js"></script>
+
+    <script>
+        const groups = [];
+        let currentGroup = null;
+
+        function describe(name, fn) {
+            currentGroup = { name, tests: [] };
+            groups.push(currentGroup);
+            fn();
+        }
+
+        function expect(actual) {
+            return {
+                toBe(expected) {
+                    const pass = String(actual) === String(expected);
+                    currentGroup.tests.push({ pass, actual, expected });
+                    return pass;
+                }
+            };
+        }
+
+        function it(name, fn) {
+            const before = currentGroup.tests.length;
+            calcCore.clear();
+            fn();
+            const after = currentGroup.tests.length;
+            if (after > before) {
+                currentGroup.tests[after - 1].name = name;
+            }
+        }
+
+        function seq(...values) {
+            calcCore.clear();
+            return calcCore.seq(...values);
+        }
+
+        describe('Basic Input Cases', () => {
+            it('typing multiple digits shows full number', () =>
+                expect(seq('1','2','3')).toBe('123'));
+ 
+            it('typing 0 alone shows 0', () =>
+                expect(seq('0')).toBe('0'));
+ 
+            it('decimal on empty input prepends 0', () =>
+                expect(seq('.')).toBe('0.'));
+ 
+            it('second decimal on same number is ignored', () =>
+                expect(seq('1','.','2','.')).toBe('1.2'));
+ 
+            it('decimal number builds correctly', () =>
+                expect(seq('3','.','1','4')).toBe('3.14'));
+        });
+
+        describe('Operator Edge Cases', () => {
+            it('operator appears on display after pressing it', () =>
+                expect(seq('8','×')).toBe('8 × '));
+ 
+            it('pressing operator with no input does nothing', () =>
+                expect(seq('+')).toBe('0'));
+ 
+            it('swapping operator replaces it, not duplicates it', () =>
+                expect(seq('8','×','÷')).toBe('8 ÷ '));
+ 
+            it('chained operators evaluate left to right', () =>
+                expect(seq('8','×','8','÷','8','+','8','−','8','=')).toBe('8'));
+ 
+            it('operator after = starts chain from result', () =>
+                expect(seq('4','×','4','=','+','1','=')).toBe('17'));
+        });
+
+        describe('Equals Edge Cases', () => {
+            it('addition', () =>
+                expect(seq('3','+','4','=')).toBe('7'));
+ 
+            it('subtraction', () =>
+                expect(seq('9','−','3','=')).toBe('6'));
+ 
+            it('multiplication', () =>
+                expect(seq('6','×','7','=')).toBe('42'));
+ 
+            it('division', () =>
+                expect(seq('9','÷','3','=')).toBe('3'));
+ 
+            it('negative result', () =>
+                expect(seq('3','−','8','=')).toBe('-5'));
+ 
+            it('pressing = with no operator does nothing', () =>
+                expect(seq('5','=')).toBe('5'));
+ 
+            it('pressing = with no second number does nothing', () =>
+                expect(seq('5','+')).toBe('5 + '));
+ 
+            it('pressing = multiple times does not break', () => {
+                seq('4','+','4','=');
+                expect(calcCore.seq('=','=')).toBe('8');
+            });
+        });
+
+        describe('Division Edge Cases', () => {
+            it('dividing by zero shows Error', () =>
+                expect(seq('8','÷','0','=')).toBe('Error'));
+ 
+            it('calculator works normally after an Error', () =>
+                expect(seq('8','÷','0','=','AC','4','+','4','=')).toBe('8'));
+ 
+            it('zero divided by a number is 0', () =>
+                expect(seq('0','÷','8','=')).toBe('0'));
+        });
+ 
+        describe('Decimal Edge Cases', () => {
+            it('0.1 + 0.2 equals 0.3, not 0.30000000000000004', () =>
+                expect(seq('0','.','1','+','0','.','2','=')).toBe('0.3'));
+ 
+            it('1 ÷ 3 gives a clean decimal', () => {
+                const result = seq('1','÷','3','=');
+                expect(result.length < 15).toBe('true');
+            });
+        });
+
+        describe('Delete Edge Cases', () => {
+            it('deletes last digit', () =>
+                expect(seq('1','2','3','DEL')).toBe('12'));
+ 
+            it('deletes down to single digit', () =>
+                expect(seq('1','2','DEL','DEL')).toBe('0'));
+ 
+            it('DEL after operator removes the operator', () =>
+                expect(seq('8','+','DEL')).toBe('8'));
+ 
+            it('DEL on result of = clears everything', () =>
+                expect(seq('4','×','4','=','DEL')).toBe('0'));
+ 
+            it('DEL on empty shows 0', () =>
+                expect(seq('DEL')).toBe('0'));
+        });
+ 
+        describe('All Clear Edge Cases', () => {
+            it('AC resets display to 0', () =>
+                expect(seq('1','2','3','AC')).toBe('0'));
+ 
+            it('AC mid-chain clears everything', () =>
+                expect(seq('8','×','8','+','AC')).toBe('0'));
+ 
+            it('AC after error clears display', () =>
+                expect(seq('1','÷','0','=','AC')).toBe('0'));
+ 
+            it('typing after AC starts fresh', () =>
+                expect(seq('9','9','AC','5')).toBe('5'));
+        });
+ 
+        describe('Display Continuity Cases', () => {
+            it('full expression builds correctly across operands', () =>
+                expect(seq('1','2','+','3','4')).toBe('12 + 34'));
+ 
+            it('typing after = starts a new expression, not appending', () =>
+                expect(seq('4','×','4','=','9')).toBe('9'));
+ 
+            it('result after = is usable in next chain', () =>
+                expect(seq('3','×','3','=','×','3','=')).toBe('27'));
+        });
+
+        let totalPass = 0, totalFail = 0;
+        const container = document.getElementById('results');
+
+        groups.forEach(group => {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'group';
+            groupEl.innerHTML = `<div class="group-title">${group.name}</div>`;
+ 
+            group.tests.forEach(t => {
+                const cls = t.pass ? 'pass' : 'fail';
+                const icon = t.pass ? '✓' : '✗';
+                t.pass ? totalPass++ : totalFail++;
+ 
+                const detail = t.pass
+                    ? `got <code>${t.actual}</code>`
+                    : `expected <code>${t.expected}</code> but got <code>${t.actual}</code>`;
+ 
+                const div = document.createElement('div');
+                div.className = `test ${cls}`;
+                div.innerHTML = `
+                    <span class="test-icon">${icon}</span>
+                    <div>
+                        <div class="test-name">${t.name || '(unnamed)'}</div>
+                        <div class="test-detail ${t.pass ? '' : 'error'}">${detail}</div>
+                    </div>
+                    <span class="badge ${cls}">${cls.toUpperCase()}</span>
+                    `;
+                groupEl.appendChild(div);
+            });
+ 
+            container.appendChild(groupEl);
+        });
+ 
+        const total = totalPass + totalFail;
+        document.getElementById('count-total').textContent  = total;
+        document.getElementById('count-passed').textContent = totalPass;
+        document.getElementById('count-failed').textContent = totalFail;
+        document.getElementById('progress-fill').style.width = `${(totalPass / total) * 100}%`;
+    </script>
+</body>
+</html>
